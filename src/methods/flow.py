@@ -60,8 +60,8 @@ class FlowMatching(GenerativeMethod):
             raise ValueError(f"unknown sampler: {sampler!r}")
         steps = steps or 50
         dt = 1.0 / steps
-        ts = torch.linspace(0.0, 1.0 - dt, steps, device=device) * _T_SCALE
         for i in range(steps):
-            v = self.model(x, ts[i].expand(n))
+            t = torch.full((n,), i * dt, device=device)
+            v = self.model(x, t * _T_SCALE)
             x = x + dt * v
         return x

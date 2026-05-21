@@ -62,15 +62,14 @@ class DDPM(GenerativeMethod):
     @torch.no_grad()
     def _ancestral(self, n: int, device: torch.device) -> Tensor:
         x = torch.randn(n, *self.shape, device=device)
-        ts = torch.arange(self.n_timesteps - 1, -1, -1, device=device, dtype=torch.long)
-        for i in range(self.n_timesteps):
-            t = ts[i]
-            eps = self.model(x, t.expand(n))
+        for t in reversed(range(self.n_timesteps)):
+            t_batch = torch.full((n,), t, device=device, dtype=torch.long)
+            eps = self.model(x, t_batch)
             beta = self.betas[t]
             alpha = 1.0 - beta
             ab = self.alpha_bars[t]
             mean = (x - beta / (1 - ab).sqrt() * eps) / alpha.sqrt()
-            if i < self.n_timesteps - 1:
+            if t > 0:
                 x = mean + beta.sqrt() * torch.randn_like(x)
             else:
                 x = mean
