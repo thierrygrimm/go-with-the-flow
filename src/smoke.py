@@ -6,14 +6,9 @@ import torch
 from config import SmokeConfig
 from data.cifar10 import CIFAR10
 from evaluate import evaluate
-from methods.ddpm import DDPM
-from methods.flow import FlowMatching
-from methods.unet import SIZES, UNet
+from methods import METHODS, SIZES, build
 from metrics.fid import FIDMetric
 from train import train
-
-
-METHODS = {"ddpm": DDPM, "fm": FlowMatching}
 
 
 def main() -> None:
@@ -27,10 +22,8 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     data = CIFAR10()
-    c = data.shape[0]
-    unet = UNet.for_size(args.size, in_channels=c, out_channels=c)
-    method = METHODS[args.method](shape=data.shape, model=unet)
-    n_params = sum(p.numel() for p in unet.parameters()) / 1e6
+    method = build(args.method, args.size, data.shape)
+    n_params = sum(p.numel() for p in method.parameters()) / 1e6
     print(f"running {args.method} ({args.size}, {n_params:.1f}M params) on {device}")
 
     train(
