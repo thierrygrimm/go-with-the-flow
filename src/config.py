@@ -3,10 +3,10 @@ from dataclasses import dataclass, field
 
 @dataclass
 class TrainConfig:
-    n_steps: int = 100
+    n_steps: int = 500
     batch_size: int = 64
     lr: float = 2e-4
-    log_every: int = 25
+    log_every: int = 50
 
 
 @dataclass

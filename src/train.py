@@ -19,7 +19,7 @@ def train(
     step = 0
     while step < n_steps:
         for batch, _ in train_loader:
-            loss = method.training_loss(batch.to(device))
+            loss = method.training_loss(batch.to(device, non_blocking=True))
             opt.zero_grad(set_to_none=True)
             loss.backward()
             opt.step()

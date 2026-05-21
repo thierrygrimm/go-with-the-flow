@@ -75,10 +75,13 @@ run_bash: _build  ##@Docker run interactive bash
 ###########################
 # EXPERIMENTS
 ###########################
+METHOD ?= ddpm
+SIZE ?= small
+
 .PHONY: smoke
-smoke:  ##@Experiments run end-to-end smoke test (local, requires `make install`)
-	$(PYTHONPATH_LOCAL) python -m smoke
+smoke:  ##@Experiments smoke test (METHOD={ddpm,fm}, SIZE={small,paper})
+	$(PYTHONPATH_LOCAL) python -m smoke --method $(METHOD) --size $(SIZE)
 
 .PHONY: smoke_docker
-smoke_docker: _build  ##@Experiments run end-to-end smoke test inside docker
-	$(DOCKER_CMD) python -m smoke
+smoke_docker: _build  ##@Experiments smoke test in docker (METHOD={ddpm,fm}, SIZE={small,paper})
+	$(DOCKER_CMD) python -m smoke --method $(METHOD) --size $(SIZE)
