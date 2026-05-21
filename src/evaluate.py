@@ -23,7 +23,7 @@ def evaluate(
 
     seen_real = 0
     for x, _ in eval_loader:
-        x = x.to(device)
+        x = x.to(device, non_blocking=True)
         for m in metrics:
             m.update(x, real=True)
         seen_real += x.shape[0]

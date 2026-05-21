@@ -4,41 +4,46 @@ Course project, group **A1**: DDPM vs. Flow Matching on CIFAR-10.
 
 ## Setup
 
-Docker (preferred):
+    make run_bash         # build the image, drop into /workspace
+    make help             # list all targets
 
-    make run_bash         # builds the image and drops you in /workspace
+On driver-535 hosts (no CUDA 12.8 forward-compat) override the base image:
 
-Or local:
+    make _build BASE_IMAGE=pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel
 
-    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+Local (no Docker, IDE only):
+
+    pip install torch torchvision
     make install
-
-`make help` lists every target.
 
 ## Smoke test
 
-End-to-end pipeline check using a random-noise placeholder method:
+Train one method for 500 steps, then compute FID:
 
-    make smoke_docker     # inside docker
-    make smoke            # local
+    make smoke_docker METHOD=ddpm SIZE=small
+    make smoke_docker METHOD=fm   SIZE=paper
 
+`METHOD={ddpm,fm}` and `SIZE={small,paper}` (small ~7M params, paper ~35M).
 First run downloads CIFAR-10 (~170 MB) and InceptionV3 weights for FID (~95 MB).
 
 ## Layout
 
 `src/` is on `PYTHONPATH`.
 
-| Path                | Role                                                       |
-|---------------------|------------------------------------------------------------|
-| `src/methods/`      | `GenerativeMethod` base + subclasses                       |
-| `src/data/`         | `DatasetBuilder` base + CIFAR-10                           |
-| `src/metrics/`      | `Metric` base + FID                                        |
-| `src/train.py`      | Training loop                                              |
-| `src/evaluate.py`   | Feed real + generated batches to metrics                   |
-| `src/smoke.py`      | End-to-end smoke entry point                               |
-| `src/config.py`     | Run config (dataclasses)                                   |
+| Path                  | Role                                              |
+|-----------------------|---------------------------------------------------|
+| `src/methods/base.py` | `GenerativeMethod` ABC                            |
+| `src/methods/unet.py` | Shared U-Net backbone (`small`, `paper` sizes)    |
+| `src/methods/ddpm.py` | Noise-prediction DDPM + DDIM sampler              |
+| `src/methods/flow.py` | Conditional flow matching + Euler sampler        |
+| `src/data/`           | `DatasetBuilder` ABC + CIFAR-10                   |
+| `src/metrics/`        | `Metric` ABC + FID                                |
+| `src/train.py`        | Training loop                                     |
+| `src/evaluate.py`     | Feed real + generated batches to metrics          |
+| `src/smoke.py`        | End-to-end smoke entry point                      |
+| `src/config.py`       | Run config (dataclasses)                          |
 
 ## Open
 
-- DDPM and Flow Matching: add as `GenerativeMethod` subclasses in `src/methods/`.
-- Extension axis: fixed-NFE / wall-clock / seed stability.
+- Long training to reproduce paper FID (~3.17 DDPM / ~6.35 FM on CIFAR-10).
+- Comparison axis: fixed-NFE / wall-clock / seed stability.

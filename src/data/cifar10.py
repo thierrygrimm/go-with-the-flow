@@ -28,6 +28,7 @@ class CIFAR10(DatasetBuilder):
         return DataLoader(
             ds, batch_size=batch_size, shuffle=True,
             num_workers=self.num_workers, drop_last=True,
+            pin_memory=True, persistent_workers=self.num_workers > 0,
         )
 
     def eval_loader(self, batch_size: int) -> DataLoader:
@@ -37,4 +38,5 @@ class CIFAR10(DatasetBuilder):
         return DataLoader(
             ds, batch_size=batch_size, shuffle=False,
             num_workers=self.num_workers,
+            pin_memory=True, persistent_workers=self.num_workers > 0,
         )
