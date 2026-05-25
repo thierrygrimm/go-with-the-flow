@@ -116,50 +116,41 @@ train_server: _build  ##@Training real training (docker, CUDA 12.8)
 	$(DOCKER_CMD) python -m run $(TRAIN_ARGS)
 
 ###########################
-# EVALUATION
+# EVALUATION (NLL + sample grid + FID-vs-NFE sweep with wall-clock)
 ###########################
-N_SAMPLES ?= 50000
-EVAL_ARGS = --method $(METHOD) --size $(SIZE) --n-samples $(N_SAMPLES)
+N_SAMPLES_FID ?= 10000
+N_SAMPLES_NLL ?= 1024
+SAMPLE_BATCH ?= 512
+EVAL_ARGS = --method $(METHOD) --size $(SIZE) \
+            --n-samples-fid $(N_SAMPLES_FID) --n-samples-nll $(N_SAMPLES_NLL) \
+            --sample-batch $(SAMPLE_BATCH)
 
 .PHONY: eval
-eval:  ##@Eval final paper-FID (local python, METHOD=, SIZE=, N_SAMPLES=)
+eval:  ##@Eval NLL + samples + FID-vs-NFE sweep (local python)
 	$(PYTHONPATH_LOCAL) python -m eval $(EVAL_ARGS)
 
 eval_local: BASE_IMAGE=$(LOCAL_BASE)
-eval_local: _build  ##@Eval final paper-FID (docker, CUDA 12.1)
+eval_local: _build  ##@Eval NLL + samples + FID-vs-NFE sweep (docker, CUDA 12.1)
 	$(DOCKER_CMD) python -m eval $(EVAL_ARGS)
 
 eval_server: BASE_IMAGE=$(SERVER_BASE)
-eval_server: _build  ##@Eval final paper-FID (docker, CUDA 12.8)
+eval_server: _build  ##@Eval NLL + samples + FID-vs-NFE sweep (docker, CUDA 12.8)
 	$(DOCKER_CMD) python -m eval $(EVAL_ARGS)
 
-###########################
-# COMPARISON
-###########################
-N_SAMPLES_SWEEP ?= 10000
-SWEEP_ARGS = --method $(METHOD) --size $(SIZE) --n-samples $(N_SAMPLES_SWEEP)
-SAMPLES_ARGS = --method $(METHOD) --size $(SIZE)
-
-sweep_local: BASE_IMAGE=$(LOCAL_BASE)
-sweep_local: _build  ##@Compare NFE sweep (docker, CUDA 12.1)
-	$(DOCKER_CMD) python -m sweep $(SWEEP_ARGS)
-
-sweep_server: BASE_IMAGE=$(SERVER_BASE)
-sweep_server: _build  ##@Compare NFE sweep (docker, CUDA 12.8)
-	$(DOCKER_CMD) python -m sweep $(SWEEP_ARGS)
-
 plot_local: BASE_IMAGE=$(LOCAL_BASE)
-plot_local: _build  ##@Compare FID-vs-NFE plot (docker, CUDA 12.1)
+plot_local: _build  ##@Eval FID-vs-NFE + FID-vs-wallclock plots (docker, CUDA 12.1)
 	$(DOCKER_CMD) python -m plot --size $(SIZE)
 
 plot_server: BASE_IMAGE=$(SERVER_BASE)
-plot_server: _build  ##@Compare FID-vs-NFE plot (docker, CUDA 12.8)
+plot_server: _build  ##@Eval FID-vs-NFE + FID-vs-wallclock plots (docker, CUDA 12.8)
 	$(DOCKER_CMD) python -m plot --size $(SIZE)
 
-samples_local: BASE_IMAGE=$(LOCAL_BASE)
-samples_local: _build  ##@Compare sample grid PNG (docker, CUDA 12.1)
-	$(DOCKER_CMD) python -m samples $(SAMPLES_ARGS)
+TRAJ_ARGS = --method $(METHOD) --size $(SIZE)
 
-samples_server: BASE_IMAGE=$(SERVER_BASE)
-samples_server: _build  ##@Compare sample grid PNG (docker, CUDA 12.8)
-	$(DOCKER_CMD) python -m samples $(SAMPLES_ARGS)
+trajectory_local: BASE_IMAGE=$(LOCAL_BASE)
+trajectory_local: _build  ##@Eval noise->image trajectory grid at low/mid/high NFE (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m trajectory $(TRAJ_ARGS)
+
+trajectory_server: BASE_IMAGE=$(SERVER_BASE)
+trajectory_server: _build  ##@Eval noise->image trajectory grid at low/mid/high NFE (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m trajectory $(TRAJ_ARGS)
