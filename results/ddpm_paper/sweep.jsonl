@@ -1,0 +1,6 @@
+{"method": "ddpm", "sampler": "ddim", "nfe": 5, "n_samples": 10000, "fid": 45.58970642089844}
+{"method": "ddpm", "sampler": "ddim", "nfe": 10, "n_samples": 10000, "fid": 20.477811813354492}
+{"method": "ddpm", "sampler": "ddim", "nfe": 20, "n_samples": 10000, "fid": 15.406180381774902}
+{"method": "ddpm", "sampler": "ddim", "nfe": 50, "n_samples": 10000, "fid": 12.455578804016113}
+{"method": "ddpm", "sampler": "ddim", "nfe": 100, "n_samples": 10000, "fid": 11.470283508300781}
+{"method": "ddpm", "sampler": "ddim", "nfe": 250, "n_samples": 10000, "fid": 10.600581169128418}

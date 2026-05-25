@@ -1,0 +1,6 @@
+{"method": "fm", "sampler": "euler", "nfe": 5, "n_samples": 10000, "fid": 38.15880584716797}
+{"method": "fm", "sampler": "euler", "nfe": 10, "n_samples": 10000, "fid": 18.73331642150879}
+{"method": "fm", "sampler": "euler", "nfe": 20, "n_samples": 10000, "fid": 13.949951171875}
+{"method": "fm", "sampler": "euler", "nfe": 50, "n_samples": 10000, "fid": 11.089153289794922}
+{"method": "fm", "sampler": "euler", "nfe": 100, "n_samples": 10000, "fid": 10.089599609375}
+{"method": "fm", "sampler": "euler", "nfe": 250, "n_samples": 10000, "fid": 9.532088279724121}

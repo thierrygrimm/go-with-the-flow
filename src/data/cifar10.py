@@ -15,15 +15,19 @@ class CIFAR10(DatasetBuilder):
         return 3, 32, 32
 
     @staticmethod
-    def _transform() -> transforms.Compose:
-        return transforms.Compose([
+    def _transform(augment: bool) -> transforms.Compose:
+        ops = []
+        if augment:
+            ops.append(transforms.RandomHorizontalFlip())
+        ops += [
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ])
+        ]
+        return transforms.Compose(ops)
 
     def train_loader(self, batch_size: int) -> DataLoader:
         ds = torchvision.datasets.CIFAR10(
-            self.root, train=True, download=True, transform=self._transform(),
+            self.root, train=True, download=True, transform=self._transform(augment=True),
         )
         return DataLoader(
             ds, batch_size=batch_size, shuffle=True,
@@ -33,7 +37,7 @@ class CIFAR10(DatasetBuilder):
 
     def eval_loader(self, batch_size: int) -> DataLoader:
         ds = torchvision.datasets.CIFAR10(
-            self.root, train=False, download=True, transform=self._transform(),
+            self.root, train=False, download=True, transform=self._transform(augment=False),
         )
         return DataLoader(
             ds, batch_size=batch_size, shuffle=False,

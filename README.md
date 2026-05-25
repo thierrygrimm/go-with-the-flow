@@ -4,12 +4,11 @@ Course project, group **A1**: DDPM vs. Flow Matching on CIFAR-10.
 
 ## Setup
 
-    make run_bash         # build the image, drop into /workspace
-    make help             # list all targets
+Pick a docker target by host CUDA driver:
 
-On driver-535 hosts (no CUDA 12.8 forward-compat) override the base image:
-
-    make _build BASE_IMAGE=pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel
+    make run_bash_local      # CUDA 12.1 (driver <= 535)
+    make run_bash_server     # CUDA 12.8 (Blackwell-capable)
+    make help                # list all targets
 
 Local (no Docker, IDE only):
 
@@ -20,11 +19,38 @@ Local (no Docker, IDE only):
 
 Train one method for 500 steps, then compute FID:
 
-    make smoke_docker METHOD=ddpm SIZE=small
-    make smoke_docker METHOD=fm   SIZE=paper
+    make smoke_local METHOD=ddpm SIZE=small
+    make smoke_server METHOD=fm SIZE=paper
 
-`METHOD={ddpm,fm}` and `SIZE={small,paper}` (small ~7M params, paper ~35M).
+`METHOD={ddpm,fm}` and `SIZE={small,paper}` (small ~9M params, paper ~35.7M, matching Ho et al.).
 First run downloads CIFAR-10 (~170 MB) and InceptionV3 weights for FID (~95 MB).
+
+## Training
+
+Paper-exact training: fp32, Adam(lr=2e-4, wd=0), EMA 0.9999, grad clip 1.0, LR warmup
+5000, hflip aug, batch 128, dropout 0.1, T=1000, linear beta schedule. Periodic FID +
+latest/best checkpoint by held-out FID. Results land in `results/<method>_<size>/`.
+
+    make train_local METHOD=ddpm SIZE=paper N_STEPS=100000
+    make train_server METHOD=fm SIZE=paper N_STEPS=100000
+
+Resume an interrupted run from `results/<method>_<size>/latest.pt`:
+
+    make train_local METHOD=ddpm SIZE=paper RESUME=--resume
+
+W&B is on by default (project `go-with-the-flow`); set `WANDB_API_KEY` in your shell
+or set `WANDB_MODE=disabled` to skip.
+
+Periodic FID during training uses fast samplers (DDIM for DDPM, Euler for FM); the
+final paper FID is computed separately via `make eval_*` (see below).
+
+## Final paper-FID
+
+Loads `results/<method>_<size>/best.pt`, swaps EMA in, samples with the paper sampler
+(ancestral for DDPM, RK45 for FM), and computes FID over 50k samples:
+
+    make eval_server METHOD=ddpm SIZE=paper
+    make eval_server METHOD=fm SIZE=paper
 
 ## Layout
 
@@ -34,16 +60,35 @@ First run downloads CIFAR-10 (~170 MB) and InceptionV3 weights for FID (~95 MB).
 |-----------------------|---------------------------------------------------|
 | `src/methods/base.py` | `GenerativeMethod` ABC                            |
 | `src/methods/unet.py` | Shared U-Net backbone (`small`, `paper` sizes)    |
-| `src/methods/ddpm.py` | Noise-prediction DDPM + DDIM sampler              |
-| `src/methods/flow.py` | Conditional flow matching + Euler sampler        |
+| `src/methods/ddpm.py` | DDPM (DDIM + ancestral samplers)                  |
+| `src/methods/flow.py` | Conditional flow matching (Euler + RK45 samplers) |
 | `src/data/`           | `DatasetBuilder` ABC + CIFAR-10                   |
 | `src/metrics/`        | `Metric` ABC + FID                                |
-| `src/train.py`        | Training loop                                     |
+| `src/train.py`        | Training loop (EMA, grad clip, warmup, checkpoints) |
 | `src/evaluate.py`     | Feed real + generated batches to metrics          |
-| `src/smoke.py`        | End-to-end smoke entry point                      |
-| `src/config.py`       | Run config (dataclasses)                          |
+| `src/ema.py`          | EMA helper                                        |
+| `src/smoke.py`        | Smoke entry point (short training run)            |
+| `src/run.py`          | Real training entry point                         |
+| `src/eval.py`         | Final paper-FID entry point                       |
+| `src/config.py`       | Smoke run config                                  |
 
-## Open
+## NFE-sweep comparison
 
-- Long training to reproduce paper FID (~3.17 DDPM / ~6.35 FM on CIFAR-10).
-- Comparison axis: fixed-NFE / wall-clock / seed stability.
+After both DDPM and FM are trained, sweep sampler/steps against each `best.pt`,
+then plot, and optionally dump sample grids:
+
+    make sweep_server METHOD=ddpm SIZE=paper
+    make sweep_server METHOD=fm   SIZE=paper
+    make plot_server  SIZE=paper                  # -> results/fid_vs_nfe_paper.png
+    make samples_server METHOD=ddpm SIZE=paper    # -> results/ddpm_paper/samples.png
+    make samples_server METHOD=fm   SIZE=paper
+
+## Ablations
+
+- **DDPM noise schedule** (Improved DDPM cosine vs paper linear): train with
+  `python -m run --method ddpm --size paper --n-steps N --schedule cosine`.
+- **FM `sigma_min`**: `... --method fm --sigma-min 0.0` to disable, or any other value.
+- **Model size**: `SIZE=small` (~9M params) trains 4x faster than `SIZE=paper`.
+- **Time embedding** (Tancik et al. random Fourier features vs Ho et al. sinusoidal):
+  `... --t-embed fourier`. Pass the same flag to `sweep.py`, `eval.py`, `samples.py`
+  when evaluating a checkpoint that was trained with `fourier`.
