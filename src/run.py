@@ -25,6 +25,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--wandb-project", default="go-with-the-flow")
+    parser.add_argument("--schedule", default="linear", choices=["linear", "cosine"], help="DDPM only")
+    parser.add_argument("--sigma-min", type=float, default=1e-4, help="FM only")
+    parser.add_argument("--t-embed", default="sinusoidal", choices=["sinusoidal", "fourier"])
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -39,8 +42,14 @@ def main() -> None:
             config=vars(args),
         )
 
+    method_kwargs: dict = {}
+    if args.method == "ddpm":
+        method_kwargs["schedule"] = args.schedule
+    elif args.method == "fm":
+        method_kwargs["sigma_min"] = args.sigma_min
+
     data = CIFAR10()
-    method = build(args.method, args.size, data.shape)
+    method = build(args.method, args.size, data.shape, t_embed=args.t_embed, **method_kwargs)
     ema = EMA(method, decay=0.9999)
 
     n_params = sum(p.numel() for p in method.parameters()) / 1e6

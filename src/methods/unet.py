@@ -24,6 +24,27 @@ def sinusoidal_embedding(t: Tensor, dim: int) -> Tensor:
     return torch.cat([args.sin(), args.cos()], dim=-1)
 
 
+class _SinusoidalEmbedding(nn.Module):
+    def __init__(self, dim: int):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, t: Tensor) -> Tensor:
+        return sinusoidal_embedding(t, self.dim)
+
+
+class _FourierEmbedding(nn.Module):
+    """Random Fourier features (Tancik et al. 2020). Frequencies fixed at init."""
+
+    def __init__(self, dim: int, scale: float = 16.0, t_max: float = 1000.0):
+        super().__init__()
+        self.register_buffer("freqs", torch.randn(dim // 2) * scale / t_max)
+
+    def forward(self, t: Tensor) -> Tensor:
+        args = t.to(torch.float32)[:, None] * self.freqs[None, :] * 2 * math.pi
+        return torch.cat([args.sin(), args.cos()], dim=-1)
+
+
 class ResBlock(nn.Module):
     def __init__(self, in_ch: int, out_ch: int, t_dim: int, dropout: float = 0.0):
         super().__init__()
@@ -92,10 +113,16 @@ class UNet(nn.Module):
         attn_levels: tuple[int, ...] = (1,),
         dropout: float = 0.0,
         num_res_blocks: int = 2,
+        t_embed: str = "sinusoidal",
     ):
         super().__init__()
         t_dim = 4 * base
-        self.sin_dim = base
+        if t_embed == "sinusoidal":
+            self.t_embedder: nn.Module = _SinusoidalEmbedding(base)
+        elif t_embed == "fourier":
+            self.t_embedder = _FourierEmbedding(base)
+        else:
+            raise ValueError(f"unknown t_embed: {t_embed!r}")
         self.time_mlp = nn.Sequential(
             nn.Linear(base, t_dim),
             nn.SiLU(),
@@ -155,14 +182,14 @@ class UNet(nn.Module):
         nn.init.zeros_(self.final_conv.bias)
 
     @staticmethod
-    def for_size(size: str, in_channels: int = 3, out_channels: int = 3) -> "UNet":
+    def for_size(size: str, in_channels: int = 3, out_channels: int = 3, t_embed: str = "sinusoidal") -> "UNet":
         preset = _PRESETS.get(size)
         if preset is None:
             raise ValueError(f"unknown size: {size!r}")
-        return UNet(in_channels, out_channels, **preset)
+        return UNet(in_channels, out_channels, t_embed=t_embed, **preset)
 
     def forward(self, x: Tensor, t: Tensor) -> Tensor:
-        t_emb = self.time_mlp(sinusoidal_embedding(t, self.sin_dim))
+        t_emb = self.time_mlp(self.t_embedder(t))
         h = self.init_conv(x)
         skips = [h]
         for block in self.downs:

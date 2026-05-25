@@ -1,9 +1,19 @@
-"""DDPM (Ho et al. 2020): noise-prediction with linear schedule, DDIM + ancestral samplers."""
+"""DDPM (Ho et al. 2020): noise-prediction with linear / cosine schedule, DDIM + ancestral samplers."""
+import math
+
 import torch
 from torch import Tensor, nn
 
 from .base import GenerativeMethod
 from .unet import UNet
+
+
+def _cosine_betas(n_timesteps: int, s: float = 0.008) -> Tensor:
+    """Cosine β schedule from Nichol & Dhariwal 2021 (Improved DDPM)."""
+    t = torch.linspace(0, n_timesteps, n_timesteps + 1) / n_timesteps
+    ab = torch.cos(((t + s) / (1 + s)) * (math.pi / 2)) ** 2
+    ab = ab / ab[0]
+    return (1 - ab[1:] / ab[:-1]).clamp(max=0.999)
 
 
 class DDPM(GenerativeMethod):
@@ -15,6 +25,7 @@ class DDPM(GenerativeMethod):
         n_timesteps: int = 1000,
         beta_start: float = 1e-4,
         beta_end: float = 0.02,
+        schedule: str = "linear",
         model: nn.Module | None = None,
     ):
         super().__init__()
@@ -22,7 +33,12 @@ class DDPM(GenerativeMethod):
         self.n_timesteps = n_timesteps
         c = shape[0]
         self.model = model if model is not None else UNet(in_channels=c, out_channels=c)
-        betas = torch.linspace(beta_start, beta_end, n_timesteps)
+        if schedule == "linear":
+            betas = torch.linspace(beta_start, beta_end, n_timesteps)
+        elif schedule == "cosine":
+            betas = _cosine_betas(n_timesteps)
+        else:
+            raise ValueError(f"unknown schedule: {schedule!r}")
         self.register_buffer("betas", betas)
         self.register_buffer("alpha_bars", torch.cumprod(1.0 - betas, dim=0))
 
@@ -44,6 +60,8 @@ class DDPM(GenerativeMethod):
         sampler: str = "ddim",
     ) -> Tensor:
         if sampler == "ancestral":
+            if steps is not None:
+                raise ValueError("ancestral sampler uses n_timesteps; do not pass `steps`")
             return self._ancestral(n, device)
         if sampler != "ddim":
             raise ValueError(f"unknown sampler: {sampler!r}")

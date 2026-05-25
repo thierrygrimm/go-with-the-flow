@@ -72,7 +72,23 @@ Loads `results/<method>_<size>/best.pt`, swaps EMA in, samples with the paper sa
 | `src/eval.py`         | Final paper-FID entry point                       |
 | `src/config.py`       | Smoke run config                                  |
 
-## Open
+## NFE-sweep comparison
 
-- Long training to reproduce paper FID (~3.17 DDPM / ~6.35 FM on CIFAR-10).
-- Comparison axis: fixed-NFE / wall-clock / seed stability.
+After both DDPM and FM are trained, sweep sampler/steps against each `best.pt`,
+then plot, and optionally dump sample grids:
+
+    make sweep_server METHOD=ddpm SIZE=paper
+    make sweep_server METHOD=fm   SIZE=paper
+    make plot_server  SIZE=paper                  # -> results/fid_vs_nfe_paper.png
+    make samples_server METHOD=ddpm SIZE=paper    # -> results/ddpm_paper/samples.png
+    make samples_server METHOD=fm   SIZE=paper
+
+## Ablations
+
+- **DDPM noise schedule** (Improved DDPM cosine vs paper linear): train with
+  `python -m run --method ddpm --size paper --n-steps N --schedule cosine`.
+- **FM `sigma_min`**: `... --method fm --sigma-min 0.0` to disable, or any other value.
+- **Model size**: `SIZE=small` (~9M params) trains 4x faster than `SIZE=paper`.
+- **Time embedding** (Tancik et al. random Fourier features vs Ho et al. sinusoidal):
+  `... --t-embed fourier`. Pass the same flag to `sweep.py`, `eval.py`, `samples.py`
+  when evaluating a checkpoint that was trained with `fourier`.

@@ -1,34 +1,36 @@
-"""Final paper-FID evaluation: load a trained checkpoint, sample with the paper sampler."""
+"""Sample grid PNG from a trained checkpoint."""
 import argparse
 from contextlib import nullcontext
 from pathlib import Path
 
 import torch
+import torchvision.utils as vutils
 
 from data.cifar10 import CIFAR10
 from ema import EMA
-from evaluate import evaluate
 from methods import METHODS, SIZES, build
-from metrics.fid import FIDMetric
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", choices=list(METHODS), default="ddpm")
     parser.add_argument("--size", choices=list(SIZES), default="paper")
-    parser.add_argument("--ckpt", type=Path, default=None,
-                        help="checkpoint path (defaults to results/<method>_<size>/best.pt)")
-    parser.add_argument("--n-samples", type=int, default=50_000)
-    parser.add_argument("--sample-batch", type=int, default=128)
-    parser.add_argument("--sampler", default=None,
-                        help="override paper-default sampler (ddpm: ancestral, fm: rk45)")
+    parser.add_argument("--ckpt", type=Path, default=None)
+    parser.add_argument("--n", type=int, default=64)
+    parser.add_argument("--nrow", type=int, default=8)
+    parser.add_argument("--sampler", default=None)
+    parser.add_argument("--steps", type=int, default=None)
+    parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--t-embed", default="sinusoidal", choices=["sinusoidal", "fourier"])
     args = parser.parse_args()
 
+    torch.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ckpt_path = args.ckpt or Path(f"./results/{args.method}_{args.size}/best.pt")
     if not ckpt_path.exists():
         raise FileNotFoundError(ckpt_path)
+    out_path = args.out or ckpt_path.parent / "samples.png"
 
     data = CIFAR10()
     method = build(args.method, args.size, data.shape, t_embed=args.t_embed).to(device)
@@ -41,22 +43,19 @@ def main() -> None:
         ema.load_state_dict(ckpt["ema"])
 
     sampler = args.sampler or type(method).paper_sampler
-    print(f"eval {args.method} ({args.size}, sampler={sampler}, n={args.n_samples}) from {ckpt_path}")
+    sample_kwargs: dict = {"sampler": sampler}
+    if args.steps is not None:
+        sample_kwargs["steps"] = args.steps
 
-    fid_metric = FIDMetric(device=device)
-    eval_loader = data.eval_loader(args.sample_batch)
-
+    method.eval()
     ctx = ema.swap_in(method) if ema is not None else nullcontext()
-    with ctx:
-        results = evaluate(
-            method, eval_loader, [fid_metric],
-            n_samples=args.n_samples,
-            sample_batch=args.sample_batch,
-            device=device,
-            sample_kwargs={"sampler": sampler},
-        )
+    with ctx, torch.no_grad():
+        samples = method.sample(args.n, device=device, **sample_kwargs)
 
-    print(f"FID: {results['FIDMetric']:.4f}")
+    samples = (samples.clamp(-1, 1) + 1) / 2
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    vutils.save_image(samples, out_path, nrow=args.nrow)
+    print(f"saved: {out_path}  ({args.n} samples, sampler={sampler})")
 
 
 if __name__ == "__main__":

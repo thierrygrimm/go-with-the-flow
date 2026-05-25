@@ -1,3 +1,4 @@
 torchmetrics[image]>=1.0
 torchdiffeq>=0.2
+matplotlib
 wandb

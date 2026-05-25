@@ -51,10 +51,13 @@ class FlowMatching(GenerativeMethod):
     ) -> Tensor:
         x = torch.randn(n, *self.shape, device=device)
         if sampler == "rk45":
+            calls = [0]
             def f(t: Tensor, x: Tensor) -> Tensor:
+                calls[0] += 1
                 return self.model(x, (t * _T_SCALE).expand(x.shape[0]))
             t_span = torch.tensor([0.0, 1.0], device=device)
             traj = torchdiffeq.odeint(f, x, t_span, method="dopri5", rtol=1e-5, atol=1e-5)
+            self.last_nfe = calls[0]
             return traj[-1]
         if sampler != "euler":
             raise ValueError(f"unknown sampler: {sampler!r}")

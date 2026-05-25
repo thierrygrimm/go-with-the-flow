@@ -132,3 +132,34 @@ eval_local: _build  ##@Eval final paper-FID (docker, CUDA 12.1)
 eval_server: BASE_IMAGE=$(SERVER_BASE)
 eval_server: _build  ##@Eval final paper-FID (docker, CUDA 12.8)
 	$(DOCKER_CMD) python -m eval $(EVAL_ARGS)
+
+###########################
+# COMPARISON
+###########################
+N_SAMPLES_SWEEP ?= 10000
+SWEEP_ARGS = --method $(METHOD) --size $(SIZE) --n-samples $(N_SAMPLES_SWEEP)
+SAMPLES_ARGS = --method $(METHOD) --size $(SIZE)
+
+sweep_local: BASE_IMAGE=$(LOCAL_BASE)
+sweep_local: _build  ##@Compare NFE sweep (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m sweep $(SWEEP_ARGS)
+
+sweep_server: BASE_IMAGE=$(SERVER_BASE)
+sweep_server: _build  ##@Compare NFE sweep (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m sweep $(SWEEP_ARGS)
+
+plot_local: BASE_IMAGE=$(LOCAL_BASE)
+plot_local: _build  ##@Compare FID-vs-NFE plot (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m plot --size $(SIZE)
+
+plot_server: BASE_IMAGE=$(SERVER_BASE)
+plot_server: _build  ##@Compare FID-vs-NFE plot (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m plot --size $(SIZE)
+
+samples_local: BASE_IMAGE=$(LOCAL_BASE)
+samples_local: _build  ##@Compare sample grid PNG (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m samples $(SAMPLES_ARGS)
+
+samples_server: BASE_IMAGE=$(SERVER_BASE)
+samples_server: _build  ##@Compare sample grid PNG (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m samples $(SAMPLES_ARGS)

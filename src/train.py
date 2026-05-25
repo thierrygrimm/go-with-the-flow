@@ -39,7 +39,7 @@ def train(
     best_fid = float("inf")
     start_step = 0
     if resume_from is not None and resume_from.exists():
-        ckpt = torch.load(resume_from, map_location=device)
+        ckpt = torch.load(resume_from, map_location=device, weights_only=False)
         method.load_state_dict(ckpt["model"])
         opt.load_state_dict(ckpt["opt"])
         if ema is not None and "ema" in ckpt:
