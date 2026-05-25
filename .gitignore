@@ -1,7 +1,10 @@
 # Project-specific
 /datasets/
-/results/
 /wandb/
+
+# Track results (best checkpoints, logs, plots) via Git LFS,
+# but keep the heavy rolling checkpoints out of the repo.
+/results/**/latest.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
