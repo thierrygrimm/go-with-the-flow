@@ -67,10 +67,26 @@ def main() -> None:
     fid_metric = FIDMetric(device=device)
     eval_loader = data.eval_loader(args.sample_batch)
 
+    # Resume: skip configs already in sweep.jsonl. Dedup by (sampler, steps); for adaptive
+    # samplers (steps=None) we treat any existing entry as "done".
+    done: set[tuple[str, int | None]] = set()
+    if out_path.exists():
+        for line in out_path.read_text().splitlines():
+            if not line.strip():
+                continue
+            e = json.loads(line)
+            s = e["sampler"]
+            done.add((s, None) if s in ("ancestral", "rk45") else (s, e["nfe"]))
+    remaining = [(s, st) for (s, st) in SWEEPS[args.method] if (s, st) not in done]
+    if not remaining:
+        print(f"all configs already in {out_path}; nothing to do")
+        return
+
     print(f"sweep {args.method} ({args.size}, n={args.n_samples}) -> {out_path}")
+    print(f"  {len(done)} done, {len(remaining)} remaining")
     ctx = ema.swap_in(method) if ema is not None else nullcontext()
-    with ctx, out_path.open("w") as f:
-        for sampler, steps in SWEEPS[args.method]:
+    with ctx, out_path.open("a") as f:
+        for sampler, steps in remaining:
             kwargs: dict = {"sampler": sampler}
             if steps is not None:
                 kwargs["steps"] = steps
