@@ -10,9 +10,10 @@ import scienceplots  # noqa: F401
 # DDIM/Euler are the fixed-step samplers we sweep NFE on. ancestral/RK45 are paper baselines.
 _FIXED_STEP_SAMPLER = {"ddpm": "ddim", "fm": "euler"}
 _STYLE = {
-    "ddpm": ("C0", "DDPM"),
-    "fm": ("C1", "FM"),
+    "ddpm": ("#0072B2", "DDPM"),   # Okabe-Ito blue
+    "fm":   ("#D55E00", "FM"),     # Okabe-Ito vermilion
 }
+_DELTA_COLOR = "#525252"           # charcoal
 
 
 def _load(path: Path) -> list[dict]:
@@ -61,15 +62,15 @@ def main() -> None:
 
     ax_top.set_xscale("log")
     ax_top.set_ylabel("FID")
-    ax_top.set_title(f"CIFAR-10 ({args.size})")
+    ax_top.set_title("DDPM vs Flow Matching on CIFAR-10")
     ax_top.legend()
     ax_top.grid(True, which="both", alpha=0.3)
 
     common = sorted(set(fixed.get("ddpm", {})) & set(fixed.get("fm", {})))
     if common:
         rel = [100 * (fixed["ddpm"][n] - fixed["fm"][n]) / fixed["ddpm"][n] for n in common]
-        ax_bot.plot(common, rel, marker="o", color="black")
-        ax_bot.axhline(0, color="gray", linestyle="--", alpha=0.5)
+        ax_bot.plot(common, rel, marker="o", color=_DELTA_COLOR)
+        ax_bot.axhline(0, color="#a0a0a0", linestyle="--", alpha=0.7)
         ax_bot.set_ylabel("FM advantage (\\%)")  # (DDPM - FM) / DDPM
     ax_bot.set_xlabel("NFE")
     ax_bot.grid(True, which="both", alpha=0.3)
