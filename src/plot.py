@@ -17,7 +17,20 @@ _DELTA_COLOR = "#525252"           # charcoal
 
 
 def _load(path: Path) -> list[dict]:
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    """Read sweep.jsonl, dropping legacy entries that pre-date the `nfe` / `fid` schema."""
+    entries: list[dict] = []
+    dropped = 0
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        e = json.loads(line)
+        if "nfe" not in e or "fid" not in e or "sampler" not in e:
+            dropped += 1
+            continue
+        entries.append(e)
+    if dropped:
+        print(f"  {path}: dropped {dropped} legacy entries (missing nfe/fid/sampler)")
+    return entries
 
 
 def _plot_fid_vs_nfe(data, fixed, out: Path) -> None:
@@ -33,10 +46,15 @@ def _plot_fid_vs_nfe(data, fixed, out: Path) -> None:
         ys = [fixed[method][x] for x in xs]
         if xs:
             ax_top.plot(xs, ys, marker="o", color=color, label=f"{label} ({sampler})")
+        # Paper sampler: thin dashed FID-level guide + star marker at its actual NFE
+        # (ancestral runs at T=1000; RK45 is adaptive and typically lands ~145).
         for e in data[method]:
             if e["sampler"] != sampler:
-                ax_top.axhline(e["fid"], color=color, linestyle="--", alpha=0.5,
-                               label=f"{label} ({e['sampler']})")
+                ax_top.axhline(e["fid"], color=color, linestyle=":", alpha=0.4,
+                               linewidth=1.0)
+                ax_top.scatter([e["nfe"]], [e["fid"]], color=color, marker="*",
+                               s=110, edgecolors="black", linewidths=0.6, zorder=4,
+                               label=f"{label} ({e['sampler']}, NFE={e['nfe']})")
     ax_top.set_xscale("log")
     ax_top.set_ylabel("FID")
     ax_top.set_title("DDPM vs Flow Matching on CIFAR-10")
@@ -75,9 +93,9 @@ def _plot_fid_vs_wallclock(data, out: Path) -> bool:
             plotted = True
         for e in data[method]:
             if e["sampler"] != sampler and "wall_s" in e:
-                ax.scatter([e["wall_s"]], [e["fid"]], color=color, marker="s", s=60,
-                           edgecolors="black", linewidths=0.5, zorder=3,
-                           label=f"{label} ({e['sampler']})")
+                ax.scatter([e["wall_s"]], [e["fid"]], color=color, marker="*", s=200,
+                           edgecolors="black", linewidths=0.8, zorder=4,
+                           label=f"{label} ({e['sampler']}, NFE={e['nfe']})")
                 plotted = True
     if not plotted:
         plt.close(fig)

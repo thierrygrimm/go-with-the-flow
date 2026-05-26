@@ -145,6 +145,14 @@ plot_server: BASE_IMAGE=$(SERVER_BASE)
 plot_server: _build  ##@Eval FID-vs-NFE + FID-vs-wallclock plots (docker, CUDA 12.8)
 	$(DOCKER_CMD) python -m plot --size $(SIZE)
 
+plot_training_local: BASE_IMAGE=$(LOCAL_BASE)
+plot_training_local: _build  ##@Eval training-loss + eval-FID vs step from W&B (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m plot_training --size $(SIZE)
+
+plot_training_server: BASE_IMAGE=$(SERVER_BASE)
+plot_training_server: _build  ##@Eval training-loss + eval-FID vs step from W&B (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m plot_training --size $(SIZE)
+
 TRAJ_ARGS = --method $(METHOD) --size $(SIZE)
 
 trajectory_local: BASE_IMAGE=$(LOCAL_BASE)
