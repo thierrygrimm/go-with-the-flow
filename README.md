@@ -144,13 +144,3 @@ bits/dim. We omit the small L_T prior-KL and L_0 discrete-decoder terms in
 DDPM's estimator.
 
 **Hardware**. Single NVIDIA RTX A6000 (48GB VRAM). Docker on CUDA 12.8.
-
-## Ablations
-
-- **DDPM noise schedule** (Improved DDPM cosine vs paper linear): train with
-  `python -m run --method ddpm --size paper --n-steps N --schedule cosine`.
-- **FM `sigma_min`**: `... --method fm --sigma-min 0.0` to disable, or any other value.
-- **Model size**: `SIZE=small` (~9M params) trains 4x faster than `SIZE=paper`.
-- **Time embedding** (Tancik et al. random Fourier features vs Ho et al. sinusoidal):
-  `... --t-embed fourier`. Pass the same flag to `eval.py` when evaluating a
-  checkpoint that was trained with `fourier`.
