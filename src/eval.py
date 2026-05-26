@@ -66,12 +66,18 @@ def _ddpm_bpd(method: DDPM, x: torch.Tensor) -> torch.Tensor:
     return nll_nats / (dim * math.log(2)) + _DEQUANT_BITS
 
 
-def _fm_bpd(method: FlowMatching, x: torch.Tensor) -> torch.Tensor:
+def _fm_bpd(method: FlowMatching, x: torch.Tensor, *,
+            rtol: float = 1e-3, atol: float = 1e-3) -> tuple[torch.Tensor, int]:
+    """Returns (bpd_per_sample, nfe_used). dopri5 at tight rtol/atol on a 3072-dim image
+    ODE explodes in NFE; defaults loosened from 1e-5 to 1e-3 (bpd changes in the 3rd
+    decimal but compute drops ~10-100x)."""
     B = x.shape[0]
     dim = x[0].numel()
     device = x.device
+    nfe = [0]
 
     def f_aug(t: torch.Tensor, state: tuple[torch.Tensor, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
+        nfe[0] += 1
         x_t, _ = state
         with torch.enable_grad():
             x_t = x_t.detach().requires_grad_(True)
@@ -84,25 +90,34 @@ def _fm_bpd(method: FlowMatching, x: torch.Tensor) -> torch.Tensor:
 
     t_span = torch.tensor([1.0, 0.0], device=device)
     state0 = (x, torch.zeros(B, device=device))
-    sol = torchdiffeq.odeint(f_aug, state0, t_span, method="dopri5", rtol=1e-5, atol=1e-5)
+    with torch.no_grad():  # don't build the outer autograd graph through every odeint step
+        sol = torchdiffeq.odeint(f_aug, state0, t_span, method="dopri5", rtol=rtol, atol=atol)
     z = sol[0][-1]
     lndet = sol[1][-1]
     log_p_z = -0.5 * (z ** 2).flatten(1).sum(1) - 0.5 * dim * math.log(2 * math.pi)
-    return -(log_p_z + lndet) / (dim * math.log(2)) + _DEQUANT_BITS
+    bpd = -(log_p_z + lndet) / (dim * math.log(2)) + _DEQUANT_BITS
+    return bpd, nfe[0]
 
 
-def compute_nll(method, data, *, n_samples: int, batch_size: int, device, out_path: Path) -> None:
-    bpd_fn = _ddpm_bpd if isinstance(method, DDPM) else _fm_bpd
+def compute_nll(method, data, *, n_samples: int, batch_size: int, device,
+                out_path: Path, fm_rtol: float = 1e-3, fm_atol: float = 1e-3) -> None:
+    is_fm = isinstance(method, FlowMatching)
     loader = data.eval_loader(batch_size)
-    print(f"[nll] n={n_samples}")
+    print(f"[nll] n={n_samples}"
+          + (f"  (FM: dopri5 rtol={fm_rtol} atol={fm_atol})" if is_fm else ""))
     bpds: list[torch.Tensor] = []
     seen = 0
     for batch, _ in loader:
         n = min(batch.shape[0], n_samples - seen)
-        bpd = bpd_fn(method, batch[:n].to(device))
+        if is_fm:
+            bpd, nfe = _fm_bpd(method, batch[:n].to(device), rtol=fm_rtol, atol=fm_atol)
+            tag = f" nfe={nfe}"
+        else:
+            bpd = _ddpm_bpd(method, batch[:n].to(device))
+            tag = ""
         bpds.append(bpd.detach().cpu())
         seen += n
-        print(f"  {seen}/{n_samples}  bpd={bpd.mean().item():.4f}")
+        print(f"  {seen}/{n_samples}  bpd={bpd.mean().item():.4f}{tag}", flush=True)
         if seen >= n_samples:
             break
     all_bpd = torch.cat(bpds)
@@ -207,6 +222,10 @@ def main() -> None:
     parser.add_argument("--skip-nll", action="store_true")
     parser.add_argument("--skip-grid", action="store_true")
     parser.add_argument("--skip-sweep", action="store_true")
+    parser.add_argument("--nll-rtol", type=float, default=1e-3,
+                        help="FM-only: dopri5 relative tolerance for NLL ODE")
+    parser.add_argument("--nll-atol", type=float, default=1e-3,
+                        help="FM-only: dopri5 absolute tolerance for NLL ODE")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -234,7 +253,8 @@ def main() -> None:
         if not args.skip_nll:
             compute_nll(method, data, n_samples=args.n_samples_nll,
                         batch_size=args.nll_batch, device=device,
-                        out_path=out_dir / "nll.json")
+                        out_path=out_dir / "nll.json",
+                        fm_rtol=args.nll_rtol, fm_atol=args.nll_atol)
         if not args.skip_grid:
             save_grid(method, n=args.n_samples_grid, nrow=args.grid_nrow,
                       device=device, out_path=out_dir / "samples.png",
