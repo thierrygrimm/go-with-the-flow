@@ -4,3 +4,4 @@
 {"method": "ddpm", "sampler": "ddim", "nfe": 50, "n_samples": 10000, "fid": 12.455578804016113}
 {"method": "ddpm", "sampler": "ddim", "nfe": 100, "n_samples": 10000, "fid": 11.470283508300781}
 {"method": "ddpm", "sampler": "ddim", "nfe": 250, "n_samples": 10000, "fid": 10.600581169128418}
+{"method": "ddpm", "sampler": "ancestral", "nfe": 1000, "n_samples": 10000, "fid": 8.458432921192316}
