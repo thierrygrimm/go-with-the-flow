@@ -66,7 +66,7 @@ def _plot_fid_vs_nfe(data, fixed, out: Path) -> None:
         rel = [100 * (fixed["ddpm"][n] - fixed["fm"][n]) / fixed["ddpm"][n] for n in common]
         ax_bot.plot(common, rel, marker="o", color=_DELTA_COLOR)
         ax_bot.axhline(0, color="#a0a0a0", linestyle="--", alpha=0.7)
-        ax_bot.set_ylabel("FM advantage (\\%)")
+        ax_bot.set_ylabel("FM advantage (%)")
     ax_bot.set_xlabel("NFE")
     ax_bot.grid(True, which="both", alpha=0.3)
     fig.tight_layout()
