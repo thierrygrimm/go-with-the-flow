@@ -54,20 +54,71 @@ SWEEPS: dict[str, list[tuple[str, int | None]]] = {
 
 
 @torch.no_grad()
-def _ddpm_bpd(method: DDPM, x: torch.Tensor) -> torch.Tensor:
+def _ddpm_bpd(method: DDPM, x: torch.Tensor) -> tuple[torch.Tensor, dict[str, float]]:
+    """Full DDPM L_VLB: iterates over ALL T timesteps per image + closed-form L_T, L_0.
+
+    L_VLB = L_T  +  sum_{t=2..T} L_{t-1}  +  L_0
+      L_T : prior KL ( q(x_T|x_0) || N(0, I) ) -- closed form, tiny
+      L_{t-1}: per-step KL for t=2..T, fixedsmall sigma^2 = beta-tilde_t (tightest bound)
+               -> weight = beta_t / (2 alpha_t (1 - alphabar_{t-1})), times ||eps - eps_theta||^2
+               one noise sample per (image, t); summed across all T-1 t's (no Monte Carlo
+               magnification factor, so variance is ~T^2 lower than single-t MC).
+      L_0 : discrete decoder. Approximated by continuous Gaussian density at x_0 under
+               N(mu_theta(x_1, 0), beta_1 I) + log(2/255) per dim for the dequant bin width.
+
+    Cost: ~T = 1000 forward passes per batch, ~20 min for 1024 samples on an A6000.
+
+    Returns (bpd_per_image, components) where components are mean per-image bpd
+    contributions of L_T / L_kl / L_0 for diagnostics.
+    """
     B = x.shape[0]
     T = method.n_timesteps
     dim = x[0].numel()
-    t = torch.randint(0, T, (B,), device=x.device)
-    noise = torch.randn_like(x)
-    ab = method.alpha_bars[t][:, None, None, None]
-    beta = method.betas[t][:, None, None, None]
-    alpha = 1.0 - beta
-    x_t = ab.sqrt() * x + (1 - ab).sqrt() * noise
-    eps_pred = method.model(x_t, t)
-    weight = beta / (2 * alpha * (1 - ab))
-    nll_nats = T * (weight * (eps_pred - noise) ** 2).sum(dim=(1, 2, 3))
-    return nll_nats / (dim * math.log(2)) + _DEQUANT_BITS
+    device = x.device
+    log2_dim = dim * math.log(2)
+
+    betas = method.betas              # [T]; betas[i] is beta_{i+1} in 1-indexed Ho notation
+    alpha_bars = method.alpha_bars    # alpha_bars[i] = alphabar_{i+1}
+
+    # L_T -- prior KL N(sqrt(abar_T) x_0, (1-abar_T) I) || N(0, I), summed over pixels
+    ab_T = alpha_bars[-1]
+    L_T = 0.5 * ab_T * x.pow(2).flatten(1).sum(1) \
+        + 0.5 * dim * (-ab_T - (1 - ab_T).log())
+
+    # sum of L_{t-1} for t = 2..T  (i.e., array indices 1..T-1)
+    L_kl = torch.zeros(B, device=device)
+    for arr_t in range(1, T):
+        noise = torch.randn_like(x)
+        ab_t = alpha_bars[arr_t]
+        ab_tm1 = alpha_bars[arr_t - 1]
+        beta_t = betas[arr_t]
+        alpha_t = 1.0 - beta_t
+        x_t = ab_t.sqrt() * x + (1 - ab_t).sqrt() * noise
+        eps_pred = method.model(x_t, torch.full((B,), arr_t, device=device, dtype=torch.long))
+        weight = beta_t / (2 * alpha_t * (1 - ab_tm1))
+        L_kl = L_kl + weight * (eps_pred - noise).pow(2).flatten(1).sum(1)
+
+    # L_0 -- decoder. x_1 = sqrt(abar_1) x + sqrt(1-abar_1) noise; mu_theta via Tweedie.
+    noise0 = torch.randn_like(x)
+    ab_1 = alpha_bars[0]
+    beta_1 = betas[0]
+    alpha_1 = 1.0 - beta_1
+    x_1 = ab_1.sqrt() * x + (1 - ab_1).sqrt() * noise0
+    eps_pred_1 = method.model(x_1, torch.zeros(B, device=device, dtype=torch.long))
+    mu_theta = (x_1 - beta_1 / (1 - ab_1).sqrt() * eps_pred_1) / alpha_1.sqrt()
+    # -log p_continuous(x_0; mu_theta, beta_1) + log(255/2) per dim (dequant)
+    L_0 = 0.5 * dim * math.log(2 * math.pi * beta_1.item()) \
+        + (x - mu_theta).pow(2).flatten(1).sum(1) / (2 * beta_1) \
+        + dim * math.log(255 / 2)
+
+    total_nats = L_T + L_kl + L_0
+    bpd = total_nats / log2_dim
+    components = {
+        "L_T_bpd":  (L_T.mean() / log2_dim).item(),
+        "L_kl_bpd": (L_kl.mean() / log2_dim).item(),
+        "L_0_bpd":  (L_0.mean() / log2_dim).item(),
+    }
+    return bpd, components
 
 
 def _fm_bpd(method: FlowMatching, x: torch.Tensor, *,
@@ -108,28 +159,37 @@ def compute_nll(method, data, *, n_samples: int, batch_size: int, device,
     is_fm = isinstance(method, FlowMatching)
     loader = data.eval_loader(batch_size)
     print(f"[nll] n={n_samples}"
-          + (f"  (FM: dopri5 rtol={fm_rtol} atol={fm_atol})" if is_fm else ""))
+          + (f"  (FM: dopri5 rtol={fm_rtol} atol={fm_atol})"
+             if is_fm else f"  (DDPM: full L_VLB, T={method.n_timesteps} per image)"))
     bpds: list[torch.Tensor] = []
+    components_acc: list[dict[str, float]] = []
     seen = 0
+    t_start = time.perf_counter()
     for batch, _ in loader:
         n = min(batch.shape[0], n_samples - seen)
         if is_fm:
             bpd, nfe = _fm_bpd(method, batch[:n].to(device), rtol=fm_rtol, atol=fm_atol)
             tag = f" nfe={nfe}"
         else:
-            bpd = _ddpm_bpd(method, batch[:n].to(device))
-            tag = ""
+            bpd, comp = _ddpm_bpd(method, batch[:n].to(device))
+            components_acc.append(comp)
+            tag = f"  L_T={comp['L_T_bpd']:.3f} L_kl={comp['L_kl_bpd']:.3f} L_0={comp['L_0_bpd']:.3f}"
         bpds.append(bpd.detach().cpu())
         seen += n
-        print(f"  {seen}/{n_samples}  bpd={bpd.mean().item():.4f}{tag}", flush=True)
+        elapsed = time.perf_counter() - t_start
+        print(f"  {seen}/{n_samples}  bpd={bpd.mean().item():.4f}  ({elapsed:.0f}s){tag}", flush=True)
         if seen >= n_samples:
             break
     all_bpd = torch.cat(bpds)
-    summary = {
+    summary: dict = {
         "n": seen,
         "bpd_mean": all_bpd.mean().item(),
         "bpd_std": all_bpd.std().item(),
     }
+    if components_acc:
+        summary["components_bpd"] = {
+            k: sum(c[k] for c in components_acc) / len(components_acc) for k in components_acc[0]
+        }
     out_path.write_text(json.dumps(summary, indent=2))
     print(f"  -> {out_path}: {summary['bpd_mean']:.4f} +/- {summary['bpd_std']:.4f} bits/dim")
 
