@@ -10,3 +10,4 @@
 {"method": "ddpm", "sampler": "heun", "nfe": 19, "n_samples": 10000, "fid": 48.6397590637207, "fid_mean_term": 21.759396902139304, "fid_cov_term": 26.8803621615814, "wall_s": 683.6377373151481}
 {"method": "ddpm", "sampler": "heun", "nfe": 49, "n_samples": 10000, "fid": 12.285962104797363, "fid_mean_term": 2.494207212143599, "fid_cov_term": 9.791754892653763, "wall_s": 1610.1936785981525}
 {"method": "ddpm", "sampler": "heun", "nfe": 99, "n_samples": 10000, "fid": 9.156213760375977, "fid_mean_term": 1.2885906153897144, "fid_cov_term": 7.867623144986262, "wall_s": 4772.78697930905}
+{"method": "ddpm", "sampler": "heun", "nfe": 249, "n_samples": 10000, "fid": 9.449490547180176, "fid_mean_term": 1.7061925765095303, "fid_cov_term": 7.743297970670645, "wall_s": 8298.054283251055}

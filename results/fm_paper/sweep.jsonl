@@ -8,3 +8,6 @@
 {"method": "fm", "sampler": "heun", "nfe": 6, "n_samples": 10000, "fid": 179.8394317626953, "fid_mean_term": 98.62145786907487, "fid_cov_term": 81.21797389362044, "wall_s": 435.7298099610489}
 {"method": "fm", "sampler": "heun", "nfe": 10, "n_samples": 10000, "fid": 96.33226013183594, "fid_mean_term": 49.815255495358734, "fid_cov_term": 46.5170046364772, "wall_s": 627.9716742739547}
 {"method": "fm", "sampler": "heun", "nfe": 20, "n_samples": 10000, "fid": 44.40740203857422, "fid_mean_term": 21.943847511141865, "fid_cov_term": 22.463554527432354, "wall_s": 1110.4479792469647}
+{"method": "fm", "sampler": "heun", "nfe": 50, "n_samples": 10000, "fid": 13.738611221313477, "fid_mean_term": 3.5569177938660204, "fid_cov_term": 10.181693427447456, "wall_s": 2445.657016299898}
+{"method": "fm", "sampler": "heun", "nfe": 100, "n_samples": 10000, "fid": 8.797920227050781, "fid_mean_term": 0.9042064512363259, "fid_cov_term": 7.893713775814455, "wall_s": 3332.235281454865}
+{"method": "fm", "sampler": "heun", "nfe": 250, "n_samples": 10000, "fid": 8.827909469604492, "fid_mean_term": 1.236534406053742, "fid_cov_term": 7.59137506355075, "wall_s": 5982.639214903815}
