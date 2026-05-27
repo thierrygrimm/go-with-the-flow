@@ -1,7 +1,6 @@
-{"method": "ddpm", "sampler": "ddim", "nfe": 5, "n_samples": 10000, "fid": 45.58970642089844}
-{"method": "ddpm", "sampler": "ddim", "nfe": 10, "n_samples": 10000, "fid": 20.477811813354492}
-{"method": "ddpm", "sampler": "ddim", "nfe": 20, "n_samples": 10000, "fid": 15.406180381774902}
-{"method": "ddpm", "sampler": "ddim", "nfe": 50, "n_samples": 10000, "fid": 12.455578804016113}
-{"method": "ddpm", "sampler": "ddim", "nfe": 100, "n_samples": 10000, "fid": 11.470283508300781}
-{"method": "ddpm", "sampler": "ddim", "nfe": 250, "n_samples": 10000, "fid": 10.600581169128418}
-{"method": "ddpm", "sampler": "ancestral", "nfe": 1000, "n_samples": 10000, "fid": 8.458432921192316}
+{"method": "ddpm", "sampler": "ddim", "nfe": 5, "n_samples": 10000, "fid": 45.92565155029297, "wall_s": 249.58331780298613}
+{"method": "ddpm", "sampler": "ddim", "nfe": 10, "n_samples": 10000, "fid": 20.52322006225586, "wall_s": 404.65633345092647}
+{"method": "ddpm", "sampler": "ddim", "nfe": 20, "n_samples": 10000, "fid": 15.342754364013672, "wall_s": 714.7186244127806}
+{"method": "ddpm", "sampler": "ddim", "nfe": 50, "n_samples": 10000, "fid": 12.565189361572266, "wall_s": 1775.4467660901137}
+{"method": "ddpm", "sampler": "ddim", "nfe": 100, "n_samples": 10000, "fid": 11.544466018676758, "wall_s": 4037.8613616900984}
+{"method": "ddpm", "sampler": "ddim", "nfe": 250, "n_samples": 10000, "fid": 10.591072082519531, "wall_s": 10380.618236534996}

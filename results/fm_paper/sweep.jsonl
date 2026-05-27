@@ -1,7 +1,7 @@
-{"method": "fm", "sampler": "euler", "nfe": 5, "n_samples": 10000, "fid": 38.15880584716797}
-{"method": "fm", "sampler": "euler", "nfe": 10, "n_samples": 10000, "fid": 18.73331642150879}
-{"method": "fm", "sampler": "euler", "nfe": 20, "n_samples": 10000, "fid": 13.949951171875}
-{"method": "fm", "sampler": "euler", "nfe": 50, "n_samples": 10000, "fid": 11.089153289794922}
-{"method": "fm", "sampler": "euler", "nfe": 100, "n_samples": 10000, "fid": 10.089599609375}
-{"method": "fm", "sampler": "euler", "nfe": 250, "n_samples": 10000, "fid": 9.532088279724121}
-{"method": "fm", "sampler": "rk45", "nfe": 128, "n_samples": 10000, "fid": 9.05468463897705}
+{"method": "fm", "sampler": "euler", "nfe": 5, "n_samples": 10000, "fid": 38.240386962890625, "wall_s": 349.09042458608747}
+{"method": "fm", "sampler": "euler", "nfe": 10, "n_samples": 10000, "fid": 18.88721466064453, "wall_s": 567.4355192149524}
+{"method": "fm", "sampler": "euler", "nfe": 20, "n_samples": 10000, "fid": 13.929241180419922, "wall_s": 1022.3053351428825}
+{"method": "fm", "sampler": "euler", "nfe": 50, "n_samples": 10000, "fid": 11.262153625488281, "wall_s": 2368.2864486358594}
+{"method": "fm", "sampler": "euler", "nfe": 100, "n_samples": 10000, "fid": 10.152735710144043, "wall_s": 4200.660243605962}
+{"method": "fm", "sampler": "euler", "nfe": 250, "n_samples": 10000, "fid": 9.52652359008789, "wall_s": 10700.132826378802}
+{"method": "fm", "sampler": "rk45", "nfe": 134, "n_samples": 10000, "fid": 9.012804985046387, "wall_s": 3950.835111240158}
