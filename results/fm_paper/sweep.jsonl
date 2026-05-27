@@ -5,3 +5,6 @@
 {"method": "fm", "sampler": "euler", "nfe": 100, "n_samples": 10000, "fid": 10.152735710144043, "wall_s": 4200.660243605962}
 {"method": "fm", "sampler": "euler", "nfe": 250, "n_samples": 10000, "fid": 9.52652359008789, "wall_s": 10700.132826378802}
 {"method": "fm", "sampler": "rk45", "nfe": 134, "n_samples": 10000, "fid": 9.012804985046387, "wall_s": 3950.835111240158}
+{"method": "fm", "sampler": "heun", "nfe": 6, "n_samples": 10000, "fid": 179.8394317626953, "fid_mean_term": 98.62145786907487, "fid_cov_term": 81.21797389362044, "wall_s": 435.7298099610489}
+{"method": "fm", "sampler": "heun", "nfe": 10, "n_samples": 10000, "fid": 96.33226013183594, "fid_mean_term": 49.815255495358734, "fid_cov_term": 46.5170046364772, "wall_s": 627.9716742739547}
+{"method": "fm", "sampler": "heun", "nfe": 20, "n_samples": 10000, "fid": 44.40740203857422, "fid_mean_term": 21.943847511141865, "fid_cov_term": 22.463554527432354, "wall_s": 1110.4479792469647}
