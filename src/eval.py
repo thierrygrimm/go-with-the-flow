@@ -38,13 +38,17 @@ _DEQUANT_BITS = math.log2(128)  # +7 bpd: [-1, 1] from uint8 images
 SWEEPS: dict[str, list[tuple[str, int | None]]] = {
     "ddpm": [
         ("ddim", 5), ("ddim", 10), ("ddim", 20), ("ddim", 50),
-        ("ddim", 100), ("ddim", 250), ("ddim", 1000),
+        ("ddim", 100), ("ddim", 250),
         ("ancestral", None),
+        # Heun (2nd-order): steps chosen so NFE=2*steps-1 lands near the DDIM grid.
+        ("heun", 3), ("heun", 5), ("heun", 10), ("heun", 25), ("heun", 50), ("heun", 125),
     ],
     "fm": [
         ("euler", 5), ("euler", 10), ("euler", 20), ("euler", 50),
-        ("euler", 100), ("euler", 250), ("euler", 1000),
+        ("euler", 100), ("euler", 250),
         ("rk45", None),
+        # Heun (2nd-order): steps chosen so NFE=2*steps lands on the Euler grid.
+        ("heun", 3), ("heun", 5), ("heun", 10), ("heun", 25), ("heun", 50), ("heun", 125),
     ],
 }
 
@@ -187,10 +191,13 @@ def run_sweep(method, data, *, n_samples: int, sample_batch: int, device,
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
             wall_s = time.perf_counter() - t0
+            # evaluate() resets metrics only at the start of a call, so the Inception
+            # stats are still live here: the FID mean/cov split costs no extra samples.
+            comp = fid_metric.compute_components()
             if sampler == "ancestral":
                 nfe = method.n_timesteps
-            elif sampler == "rk45":
-                nfe = method.last_nfe  # counted inside FlowMatching.sample
+            elif sampler in ("rk45", "heun"):
+                nfe = method.last_nfe  # counted inside the sampler (2 evals/step for heun)
             else:
                 nfe = steps
             entry = {
@@ -199,6 +206,8 @@ def run_sweep(method, data, *, n_samples: int, sample_batch: int, device,
                 "nfe": nfe,
                 "n_samples": n_samples,
                 "fid": results["FIDMetric"],
+                "fid_mean_term": comp["fid_mean_term"],
+                "fid_cov_term": comp["fid_cov_term"],
                 "wall_s": wall_s,
             }
             print(f"nfe={nfe} FID={entry['fid']:.4f} wall={wall_s:.1f}s")

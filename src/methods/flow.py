@@ -48,8 +48,10 @@ class FlowMatching(GenerativeMethod):
         device: torch.device,
         steps: int | None = None,
         sampler: str = "euler",
+        x0: Tensor | None = None,
     ) -> Tensor:
-        x = torch.randn(n, *self.shape, device=device)
+        # x0 lets callers fix the initial noise (e.g. same-noise paired sampling).
+        x = x0 if x0 is not None else torch.randn(n, *self.shape, device=device)
         if sampler == "rk45":
             calls = [0]
             def f(t: Tensor, x: Tensor) -> Tensor:
@@ -59,12 +61,22 @@ class FlowMatching(GenerativeMethod):
             traj = torchdiffeq.odeint(f, x, t_span, method="dopri5", rtol=1e-5, atol=1e-5)
             self.last_nfe = calls[0]
             return traj[-1]
-        if sampler != "euler":
-            raise ValueError(f"unknown sampler: {sampler!r}")
         steps = steps or 50
         dt = 1.0 / steps
-        for i in range(steps):
-            t = torch.full((n,), i * dt, device=device)
-            v = self.model(x, t * _T_SCALE)
-            x = x + dt * v
-        return x
+        if sampler == "euler":
+            for i in range(steps):
+                t = torch.full((n,), i * dt, device=device)
+                x = x + dt * self.model(x, t * _T_SCALE)
+            return x
+        if sampler == "heun":
+            # 2nd-order Heun (explicit trapezoid): predict, take an Euler step,
+            # re-predict at the endpoint, average the two velocities. NFE = 2*steps.
+            for i in range(steps):
+                t = i * dt
+                k1 = self.model(x, torch.full((n,), t, device=device) * _T_SCALE)
+                x_euler = x + dt * k1
+                k2 = self.model(x_euler, torch.full((n,), t + dt, device=device) * _T_SCALE)
+                x = x + 0.5 * dt * (k1 + k2)
+            self.last_nfe = 2 * steps
+            return x
+        raise ValueError(f"unknown sampler: {sampler!r}")

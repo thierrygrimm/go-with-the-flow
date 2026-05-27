@@ -162,3 +162,27 @@ trajectory_local: _build  ##@Eval noise->image trajectory grid at low/mid/high N
 trajectory_server: BASE_IMAGE=$(SERVER_BASE)
 trajectory_server: _build  ##@Eval noise->image trajectory grid at low/mid/high NFE (docker, CUDA 12.8)
 	$(DOCKER_CMD) python -m trajectory $(TRAJ_ARGS)
+
+geometry_local: BASE_IMAGE=$(LOCAL_BASE)
+geometry_local: _build  ##@Eval trajectory straightness (arc/chord) + speed profile (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m geometry --size $(SIZE)
+
+geometry_server: BASE_IMAGE=$(SERVER_BASE)
+geometry_server: _build  ##@Eval trajectory straightness (arc/chord) + speed profile (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m geometry --size $(SIZE)
+
+paired_local: BASE_IMAGE=$(LOCAL_BASE)
+paired_local: _build  ##@Eval same-noise DDPM-vs-FM paired samples + correlation (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m paired --size $(SIZE)
+
+paired_server: BASE_IMAGE=$(SERVER_BASE)
+paired_server: _build  ##@Eval same-noise DDPM-vs-FM paired samples + correlation (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m paired --size $(SIZE)
+
+plot_samplers_local: BASE_IMAGE=$(LOCAL_BASE)
+plot_samplers_local: _build  ##@Eval FID-vs-NFE with all samplers overlaid (docker, CUDA 12.1)
+	$(DOCKER_CMD) python -m plot_samplers --size $(SIZE)
+
+plot_samplers_server: BASE_IMAGE=$(SERVER_BASE)
+plot_samplers_server: _build  ##@Eval FID-vs-NFE with all samplers overlaid (docker, CUDA 12.8)
+	$(DOCKER_CMD) python -m plot_samplers --size $(SIZE)
