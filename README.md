@@ -51,7 +51,7 @@
 
 ## Project description
 
-**go-with-the-flow** is a reproducible experimental framework for comparing **DDPM** and **Flow Matching** on CIFAR-10 under aligned model capacity and training settings. The repository focuses on fair, side-by-side evaluation of generative quality, compute efficiency, and likelihood behavior. This repository was developed as course project **A1**.
+**go-with-the-flow** is a reproducible experimental framework for comparing **DDPM** and **Flow Matching** on CIFAR-10 under aligned model capacity and training settings. The repository focuses on fair, side-by-side evaluation of generative quality, compute efficiency, and likelihood behavior.
 
 <p align="center">
   <img src="results/paired_paper.png" alt="DDPM and Flow Matching sample comparison" width="280"/>
@@ -103,36 +103,10 @@ project/
 ├── Makefile                  # Reproducible command targets
 ├── requirements.txt          # Python dependencies
 ├── Dockerfile                # Containerized runtime setup
-├── PROJECT_REPORT.md         # Project report and findings
 └── README.md                 # This file
 ```
 
 Core outputs are written to `results/<method>_<size>/` (checkpoints, logs, samples, sweeps), while cross-method comparison plots are saved under `results/`.
-
-Key module map:
-
-| Path | Role |
-|---|---|
-| `src/methods/base.py` | `GenerativeMethod` ABC |
-| `src/methods/unet.py` | Shared U-Net backbone (`small`, `paper` sizes) |
-| `src/methods/ddpm.py` | DDPM (DDIM + ancestral + Heun samplers) |
-| `src/methods/flow.py` | Conditional flow matching (Euler + RK45 + Heun) |
-| `src/methods/__init__.py` | `build()` and `load_method()` (checkpoint + EMA loader) |
-| `src/data/` | `DatasetBuilder` ABC + CIFAR-10 |
-| `src/metrics/` | `Metric` ABC + FID (with mean/cov decomposition support) |
-| `src/train.py` | Training loop (EMA, grad clip, warmup, checkpoints) |
-| `src/evaluate.py` | Feed real + generated batches to metrics |
-| `src/ema.py` | EMA helper |
-| `src/smoke.py` | Smoke entry point (short training run) |
-| `src/run.py` | Real training entry point |
-| `src/eval.py` | Eval entry: NLL + sample grid + FID-vs-NFE sweep |
-| `src/plot.py` | FID-vs-NFE + FID-vs-wall-clock paper plots |
-| `src/plot_samplers.py` | Sampler ablation (all samplers overlaid) + FID decomposition |
-| `src/plot_training.py` | Training-loss + eval-FID vs step plots (from W&B) |
-| `src/geometry.py` | Trajectory straightness (arc/chord, speed, angle) |
-| `src/paired.py` | Same-noise DDPM/FM paired samples + nearest-train check |
-| `src/trajectory.py` | Noise-to-image evolution at varying NFE budgets |
-| `src/config.py` | Smoke run config |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
