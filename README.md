@@ -54,7 +54,7 @@
 **go-with-the-flow** is a reproducible experimental framework for comparing **DDPM** and **Flow Matching** on CIFAR-10 under aligned model capacity and training settings. The repository focuses on fair, side-by-side evaluation of generative quality, compute efficiency, and likelihood behavior. This repository was developed as course project **A1**.
 
 <p align="center">
-  <img src="results/paired_paper.png" alt="DDPM and Flow Matching sample comparison" style="width:100%;max-width:360px;"/>
+  <img src="results/paired_paper.png" alt="DDPM and Flow Matching sample comparison" width="280"/>
   <br/>
   <em>Figure 1: Side-by-side generated samples from the paper-sized DDPM and FM models.</em>
 </p>
